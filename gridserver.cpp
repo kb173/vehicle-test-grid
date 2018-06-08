@@ -3,10 +3,14 @@
 #include <unistd.h>
 #include <iostream>
 #include <signal.h>
+#include <sys/stat.h>
 #include "myqueue.h"
 
 using namespace std;
 
+FILE *fp;
+string fifo_name = "displaypipe";
+int fifo_mask = 0660;
 
 int msgid = -1;  /* Message Queue ID */
 
@@ -22,23 +26,53 @@ void my_handler(int s){
 
     printf("Message queue was deleted.\n");
 
+    remove(fifo_name.c_str());
+
+    printf("FIFO was deleted.\n");
+
     exit(1);
 }
 
 class Vehicle 
 {
+private:
+    message_t msg;  /* Buffer fuer Message */
+
 public:
     char sym;
     int pos_x;
     int pos_y;
+    int pid;
 
     Vehicle () {}
 
-    Vehicle (char n_sym, int x, int y)
+    Vehicle (char n_sym, int x, int y, int p)
     {
         sym = n_sym;
         pos_x = x;
         pos_y = y;
+        pid = p;
+
+        msg.mType = (long)sym;
+    }
+
+    void remove ()
+    {
+        kill(pid, SIGTERM);
+    }
+
+    void send (string txt)
+    {
+        // Send with pid as type
+        strncpy(msg.mText, txt.c_str(), MAX_DATA);
+
+        if (msgsnd(msgid, &msg, sizeof(msg) - sizeof(long), 0) == -1)
+        {
+            /* error handling */
+            fprintf(stderr,"Can't send message\n");
+            return;
+        }
+
     }
 };
 
@@ -76,11 +110,14 @@ public:
         }
     }
 
-    bool new_vehicle (char v)
+    bool new_vehicle (char v, int p)
     {
         // Check if vehicle with symbol already exists
         if (vehicles[v - 'A'] != nullptr)
         {
+            vehicles[v - 'A']->remove();
+            cout << "There already is a vehicle with this character!" << endl;
+
             return false;
         }
 
@@ -91,16 +128,27 @@ public:
             {
                 if (grid[x][y] == ' ')
                 {
-                    vehicles[v - 'A'] = new Vehicle(v, x, y);
+                    vehicles[v - 'A'] = new Vehicle(v, x, y, p);
+
+                    // Send coordinates
+                    // vehicles[v - 'A']->send("Start position: " + to_string(x) + ", " + to_string(y));
                     return true;
                 }
             }
         }
 
-        return false; // Field is full
+        vehicles[v - 'A']->remove();
+        cout << "Field is full!" << endl;
     }
 
-    char move_vehicle (char v, int x_dir, int y_dir)
+    void remove_vehicle (char v)
+    {
+        vehicles[v - 'A']->remove();
+        vehicles[v - 'A'] = nullptr;
+        cout << "Removed vehicle " << v << endl;
+    }
+
+    void move_vehicle (char v, int x_dir, int y_dir)
     {
         int c_x = vehicles[v - 'A']->pos_x;
         int c_y = vehicles[v - 'A']->pos_y;
@@ -111,7 +159,8 @@ public:
         // Out of bounds?
         if (n_x < 0 || n_x > size_x || n_y < 0 || n_y > size_y)
         {
-            return '!'; // Player dies
+            vehicles[v - 'A']->remove();
+            return;
         }
 
         if (grid[n_x][n_y] == ' ')
@@ -119,10 +168,12 @@ public:
             vehicles[v - 'A']->pos_x = n_x;
             vehicles[v - 'A']->pos_y = n_y;
 
-            return ' '; // Success!
+            return; // Success!
         }
 
-        return grid[n_x][n_y]; // Return the player that dies with the moved player
+        // Crash! Both vehicles die
+        vehicles[v - 'A']->remove();
+        vehicles[grid[n_x][n_y]]->remove();
     }
 };
 
@@ -180,9 +231,22 @@ int main (int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
+    // Make FIFO
+    if (mkfifo(fifo_name.c_str(), fifo_mask) == -1)
+    {
+        fprintf(stderr, "Error creating fifo\n");
+    }
+
+
     /* In einer Endlosschleife Nachrichten empfangen */
     while (1)
     {
+        fp = fopen(fifo_name.c_str(), "w");
+
+        fprintf(fp,"This is a FIFO test message\n");
+
+        fclose(fp);
+    
         if (msgrcv(msgid, &msg, sizeof(msg) - sizeof(long), 0 , 0) == -1)
         {
             // Error
@@ -196,16 +260,31 @@ int main (int argc, char* argv[])
 
         cout << "Message received from " << snd << ": " << msg.mText << endl;
 
-        if (msg.mText[0] == 'n' && msg.mText[1] == 'e') // New vehicle registration
+        if (msg.mText[0] == 'n') // New vehicle registration
         {
             cout << "New vehicle" << endl;
 
-            if (!gr.new_vehicle(snd))
-            {
-                // Not successful -> kill process
-                kill(buf->msg_lspid, SIGTERM);
-                cout << "Vehicle initialization not successful! Process has been terminated." << endl;
-            }
+            gr.new_vehicle(snd, buf->msg_lspid);
+        }
+        else if (msg.mText[0] == 'T')
+        {
+            gr.remove_vehicle(snd);
+        }
+        else if (msg.mText[0] == 'N')
+        {
+            gr.move_vehicle(snd, 0, -1);
+        }
+        else if (msg.mText[0] == 'E')
+        {
+            gr.move_vehicle(snd, 1, 0);
+        }
+        else if (msg.mText[0] == 'S')
+        {
+            gr.move_vehicle(snd, 0, 1);
+        }
+        else if (msg.mText[0] == 'W')
+        {
+            gr.move_vehicle(snd, -1, 0);
         }
     }
 

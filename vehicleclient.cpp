@@ -19,6 +19,11 @@ void my_handler(int s){
     exit(1);
 }
 
+void term_handler(int s)
+{
+    cout << "Vehicle has been eliminated." << endl;
+}
+
 int main (int argc, char* argv[])
 {
     // Ctrl C handling
@@ -29,6 +34,15 @@ int main (int argc, char* argv[])
     sigIntHandler.sa_flags = 0;
 
     sigaction(SIGINT, &sigIntHandler, NULL);
+
+    // Termination handling
+    struct sigaction sigTermHandler;
+
+    sigTermHandler.sa_handler = term_handler;
+    sigemptyset(&sigTermHandler.sa_mask);
+    sigTermHandler.sa_flags = 0;
+
+    sigaction(SIGTERM, &sigTermHandler, NULL);
 
 
     char* programm_name = argv[0];
@@ -60,14 +74,12 @@ int main (int argc, char* argv[])
     printf("Message sent: %s\n", msg.mText);
 
 
-    char* input;
+    string input;
 
-    while (1)
+    while (cin >> input)
     {
-        cin >> input;
-
         // Send message
-        strncpy(msg.mText, input, MAX_DATA);
+        strncpy(msg.mText, input.c_str(), MAX_DATA);
 
         if (msgsnd(msgid, &msg, sizeof(msg) - sizeof(long), 0) == -1)
         {
