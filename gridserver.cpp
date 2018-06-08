@@ -25,7 +25,7 @@ void my_handler(int s){
     exit(1);
 }
 
-class Vehicle
+class Vehicle 
 {
 public:
     char sym;
@@ -48,7 +48,7 @@ private:
     char **grid;
     int size_x, size_y;
 
-    Vehicle vehicles[26];
+    Vehicle* vehicles[26];
 public:
     Grid (int x, int y)
     {
@@ -56,30 +56,42 @@ public:
         size_y = y;
 
         // Initialize grid
-        char **grid = new char*[x];
+        grid = new char*[size_x];
 
-        for (int cx = 0; cx < x; cx++)
+        for (int cx = 0; cx < size_x; cx++)
         {
-            grid[cx] = new char[y];
+            grid[cx] = new char[size_y];
 
             // Set all fields to empty
-            for (int cy = 0; cy < y; cy++)
+            for (int cy = 0; cy < size_y; cy++)
             {
                 grid[cx][cy] = ' ';
             }
+        }
+
+        // Initialize vehicles
+        for (int i = 0; i < 26; i++)
+        {
+            vehicles[i] = nullptr;
         }
     }
 
     bool new_vehicle (char v)
     {
-        // Find first free field and put vehicle there
-        for (int y = 0; y < size_y; y++)
+        // Check if vehicle with symbol already exists
+        if (vehicles[v - 'A'] != nullptr)
         {
-            for (int x = 0; x < size_x; x++)
+            return false;
+        }
+
+        // Find first free field and put vehicle there
+        for (int x = 0; x < size_x; x++)
+        {
+            for (int y = 0; y < size_y; y++)
             {
                 if (grid[x][y] == ' ')
                 {
-                    vehicles[v - 'A'] = Vehicle(v, x, y);
+                    vehicles[v - 'A'] = new Vehicle(v, x, y);
                     return true;
                 }
             }
@@ -90,8 +102,8 @@ public:
 
     char move_vehicle (char v, int x_dir, int y_dir)
     {
-        int c_x = vehicles[v - 'A'].pos_x;
-        int c_y = vehicles[v - 'A'].pos_y;
+        int c_x = vehicles[v - 'A']->pos_x;
+        int c_y = vehicles[v - 'A']->pos_y;
 
         int n_x = c_x + x_dir;
         int n_y = c_y + y_dir;
@@ -104,8 +116,8 @@ public:
 
         if (grid[n_x][n_y] == ' ')
         {
-            vehicles[v - 'A'].pos_x = n_x;
-            vehicles[v - 'A'].pos_y = n_y;
+            vehicles[v - 'A']->pos_x = n_x;
+            vehicles[v - 'A']->pos_y = n_y;
 
             return ' '; // Success!
         }
@@ -158,6 +170,9 @@ int main (int argc, char* argv[])
     message_t msg;  /* Buffer fuer Message */
 
     /* Message Queue neu anlegen */
+    struct msqid_ds msqid_ds, *buf;
+    buf = & msqid_ds;
+
     if ((msgid = msgget(KEY,PERM | IPC_CREAT | IPC_EXCL )) == -1)
     {
         /* error handling */
@@ -168,7 +183,7 @@ int main (int argc, char* argv[])
     /* In einer Endlosschleife Nachrichten empfangen */
     while (1)
     {
-        if (msgrcv(msgid,&msg,sizeof(msg)-sizeof(long), 0 , 0) == -1)
+        if (msgrcv(msgid, &msg, sizeof(msg) - sizeof(long), 0 , 0) == -1)
         {
             // Error
             fprintf(stderr,"%s: Can't receive from message queue\n",argv[0]);
@@ -176,7 +191,22 @@ int main (int argc, char* argv[])
         }
 
         // Message received!
-        cout << "Message received from " << (char)msg.mType << ": " << msg.mText << endl;
+        char snd = (char)msg.mType;
+        msgctl(msgid, IPC_STAT, buf);
+
+        cout << "Message received from " << snd << ": " << msg.mText << endl;
+
+        if (msg.mText[0] == 'n' && msg.mText[1] == 'e') // New vehicle registration
+        {
+            cout << "New vehicle" << endl;
+
+            if (!gr.new_vehicle(snd))
+            {
+                // Not successful -> kill process
+                kill(buf->msg_lspid, SIGTERM);
+                cout << "Vehicle initialization not successful! Process has been terminated." << endl;
+            }
+        }
     }
 
     return 0;
