@@ -157,7 +157,7 @@ public:
         int n_y = c_y + y_dir;
 
         // Out of bounds?
-        if (n_x < 0 || n_x > size_x || n_y < 0 || n_y > size_y)
+        if (n_x < 0 || n_x >= size_x || n_y < 0 || n_y >= size_y)
         {
             vehicles[v - 'A']->remove();
             return;
@@ -174,6 +174,44 @@ public:
         // Crash! Both vehicles die
         vehicles[v - 'A']->remove();
         vehicles[grid[n_x][n_y]]->remove();
+    }
+
+    void print_board ()
+    {
+        string board = "";
+
+        for (int y = 0; y < size_y + 2; y++)
+        {
+            for (int x = 0; x < size_x + 2; x++)
+            {
+                char sym = ' ';
+
+                // Border
+                if (x == 0 || y == 0 || x == size_x + 1 || y == size_y + 1)
+                {
+                    sym = '#';
+                }
+
+                // Check whether a vehicle is here
+                for (int i = 0; i < 26; i++)
+                {
+                    if (vehicles[i] != nullptr &&
+                        vehicles[i]->pos_x == x - 1 && vehicles[i]->pos_y == y - 1)
+                    {
+
+                        sym = vehicles[i]->sym;
+                    }
+                }
+
+                board += sym;
+            }
+
+            board += "\n";
+        }
+
+        fp = fopen(fifo_name.c_str(), "w");
+        fprintf(fp, "%s", board.c_str());
+        fclose(fp);
     }
 };
 
@@ -241,12 +279,6 @@ int main (int argc, char* argv[])
     /* In einer Endlosschleife Nachrichten empfangen */
     while (1)
     {
-        fp = fopen(fifo_name.c_str(), "w");
-
-        fprintf(fp,"This is a FIFO test message\n");
-
-        fclose(fp);
-    
         if (msgrcv(msgid, &msg, sizeof(msg) - sizeof(long), 0 , 0) == -1)
         {
             // Error
@@ -286,6 +318,8 @@ int main (int argc, char* argv[])
         {
             gr.move_vehicle(snd, -1, 0);
         }
+
+        gr.print_board();
     }
 
     return 0;
