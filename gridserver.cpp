@@ -58,7 +58,10 @@ public:
 
     void remove ()
     {
-        kill(pid, SIGTERM);
+        if (kill(pid, SIGTERM) == -1)
+        {
+            printf("Error killing process with pid %i", pid);
+        }
     }
 
     void send (string txt)
@@ -89,20 +92,6 @@ public:
         size_x = x;
         size_y = y;
 
-        // Initialize grid
-        grid = new char*[size_x];
-
-        for (int cx = 0; cx < size_x; cx++)
-        {
-            grid[cx] = new char[size_y];
-
-            // Set all fields to empty
-            for (int cy = 0; cy < size_y; cy++)
-            {
-                grid[cx][cy] = ' ';
-            }
-        }
-
         // Initialize vehicles
         for (int i = 0; i < 26; i++)
         {
@@ -125,8 +114,8 @@ public:
         {
             for (int y = 0; y < size_y; y++)
             {
-                if (grid[x][y] == ' ')
-                {
+                //if (grid[x][y] == ' ')
+                //{
                     bool can_place = true;
 
                     for (int i = 0; i < 26; i++)
@@ -146,7 +135,7 @@ public:
 
                     // Send coordinates
                     // vehicles[v - 'A']->send("Start position: " + to_string(x) + ", " + to_string(y));
-                }
+                //}
             }
         }
 

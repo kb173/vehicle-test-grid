@@ -19,11 +19,26 @@ int main ()
 	int fd = open(fifo_name.c_str(), O_RDONLY);
 	char in[BUFFER];
 
-	while (1)
+/*	while (1)
 	{
 		if (read(fd, in, BUFFER) > 0)
 		{
 			printf("%s", in);
+		}
+	}*/
+
+	while (1)
+	{
+		if ((fp = fopen(fifo_name.c_str(), "r")) != NULL) 
+		{
+			char c;
+
+			while((c = getc(fp)) != EOF)
+			{
+				printf("%c", c);
+			}
+			
+			fclose(fp);
 		}
 	}
 
