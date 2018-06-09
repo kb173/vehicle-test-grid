@@ -53,7 +53,7 @@ public:
         pos_y = y;
         pid = p;
 
-        msg.mType = (long)sym;
+        msg.mType = (long)sym + 100;
     }
 
     void remove ()
@@ -130,11 +130,12 @@ public:
                     if (can_place)
                     {
                         vehicles[v - 'A'] = new Vehicle(v, x, y, p);
+
+                        // Send coordinates
+                        vehicles[v - 'A']->send("Start position: " + to_string(x) + ", " + to_string(y));
+
                         return true;
                     }
-
-                    // Send coordinates
-                    // vehicles[v - 'A']->send("Start position: " + to_string(x) + ", " + to_string(y));
                 //}
             }
         }
@@ -286,11 +287,10 @@ int main (int argc, char* argv[])
         fprintf(stderr, "Error creating fifo\n");
     }
 
-
     /* In einer Endlosschleife Nachrichten empfangen */
     while (1)
     {
-        if (msgrcv(msgid, &msg, sizeof(msg) - sizeof(long), 0 , 0) == -1)
+        if (msgrcv(msgid, &msg, sizeof(msg) - sizeof(long), -(long)'Z' , 0) == -1)
         {
             // Error
             fprintf(stderr,"%s: Can't receive from message queue\n",argv[0]);

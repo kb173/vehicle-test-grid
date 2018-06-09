@@ -25,7 +25,7 @@ int main ()
 		{
 			printf("%s", in);
 		}
-	}*/
+	} Prints weird characters... */
 
 	while (1)
 	{
@@ -37,7 +37,7 @@ int main ()
 			{
 				printf("%c", c);
 			}
-			
+
 			fclose(fp);
 		}
 	}
