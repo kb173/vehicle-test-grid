@@ -115,29 +115,41 @@ public:
         // Check if vehicle with symbol already exists
         if (vehicles[v - 'A'] != nullptr)
         {
-            vehicles[v - 'A']->remove();
             cout << "There already is a vehicle with this character!" << endl;
 
             return false;
         }
 
         // Find first free field and put vehicle there
-        for (int x = 0; x < size_x; x++)
+        for (int x = 0; x < size_x; x++) // DOESNT WORK YET!
         {
             for (int y = 0; y < size_y; y++)
             {
                 if (grid[x][y] == ' ')
                 {
-                    vehicles[v - 'A'] = new Vehicle(v, x, y, p);
+                    bool can_place = true;
+
+                    for (int i = 0; i < 26; i++)
+                    {
+                        if (vehicles[i] != nullptr &&
+                            vehicles[i]->pos_x == x && vehicles[i]->pos_y == y)
+                        {
+                            can_place = false;
+                        }
+                    }
+
+                    if (can_place)
+                    {
+                        vehicles[v - 'A'] = new Vehicle(v, x, y, p);
+                        return true;
+                    }
 
                     // Send coordinates
                     // vehicles[v - 'A']->send("Start position: " + to_string(x) + ", " + to_string(y));
-                    return true;
                 }
             }
         }
 
-        vehicles[v - 'A']->remove();
         cout << "Field is full!" << endl;
     }
 
@@ -160,20 +172,28 @@ public:
         if (n_x < 0 || n_x >= size_x || n_y < 0 || n_y >= size_y)
         {
             vehicles[v - 'A']->remove();
+            vehicles[v - 'A'] = nullptr;
             return;
         }
 
-        if (grid[n_x][n_y] == ' ')
+        for (int i = 0; i < 26; i++)
         {
-            vehicles[v - 'A']->pos_x = n_x;
-            vehicles[v - 'A']->pos_y = n_y;
+            if (vehicles[i] != nullptr && vehicles[i]->pos_x == n_x && vehicles[i]->pos_y == n_y) // Crash!
+            {
+                vehicles[v - 'A']->remove();
+                vehicles[v - 'A'] = nullptr;
+                vehicles[i]->remove();
+                vehicles[i] = nullptr;
 
-            return; // Success!
+                return;
+            } 
         }
 
-        // Crash! Both vehicles die
-        vehicles[v - 'A']->remove();
-        vehicles[grid[n_x][n_y]]->remove();
+        // Success!
+        vehicles[v - 'A']->pos_x = n_x;
+        vehicles[v - 'A']->pos_y = n_y;
+
+        return;
     }
 
     void print_board ()
@@ -208,6 +228,8 @@ public:
 
             board += "\n";
         }
+
+        board += "\0";
 
         fp = fopen(fifo_name.c_str(), "w");
         fprintf(fp, "%s", board.c_str());

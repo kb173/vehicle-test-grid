@@ -21,13 +21,11 @@ int main ()
 
 	while (1)
 	{
-		if (read(fd, in, BUFFER))
+		if (read(fd, in, BUFFER) > 0)
 		{
-			cout << in;
+			printf("%s", in);
 		}
 	}
-
-    fclose(fp);
 
 	return 0;
 }
