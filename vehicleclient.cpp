@@ -65,7 +65,7 @@ int main (int argc, char* argv[])
 
     char* programm_name = argv[0];
 
-    // Check if vehicle name was provided and corect
+    // Check if vehicle name was provided and correct
     if (argc < 2 || !(argv[1][0] >= 'A' && argv[1][0] <= 'Z'))
     {
         print_usage(programm_name);

@@ -25,18 +25,20 @@ void print_usage(char *programm_name)
 void my_handler(int s){
     printf("Caught signal %d\n", s);
 
+    // Delete message queue
     if (msgctl(msgid, IPC_RMID, NULL) == -1) {
         fprintf(stderr, "Message queue could not be deleted.\n");
         exit(EXIT_FAILURE);
     }
 
+    // Delete queue
     printf("Message queue was deleted.\n");
 
     remove(fifo_name.c_str());
 
     printf("FIFO was deleted.\n");
 
-    exit(1);
+    exit(0);
 }
 
 class Vehicle 
@@ -59,7 +61,7 @@ public:
         pos_y = y;
         pid = p;
 
-        msg.mType = (long)sym + 100;
+        msg.mType = (long)sym + 100; // Offset so that the server doesn't grab the message instead of the client
     }
 
     void remove ()
@@ -72,7 +74,6 @@ public:
 
     void send (string txt)
     {
-        // Send with pid as type
         strncpy(msg.mText, txt.c_str(), MAX_DATA);
 
         if (msgsnd(msgid, &msg, sizeof(msg) - sizeof(long), 0) == -1)
@@ -116,33 +117,30 @@ public:
         }
 
         // Find first free field and put vehicle there
-        for (int x = 0; x < size_x; x++) // DOESNT WORK YET!
+        for (int x = 0; x < size_x; x++)
         {
             for (int y = 0; y < size_y; y++)
             {
-                //if (grid[x][y] == ' ')
-                //{
-                    bool can_place = true;
+                bool can_place = true;
 
-                    for (int i = 0; i < 26; i++)
+                for (int i = 0; i < 26; i++)
+                {
+                    if (vehicles[i] != nullptr &&
+                        vehicles[i]->pos_x == x && vehicles[i]->pos_y == y)
                     {
-                        if (vehicles[i] != nullptr &&
-                            vehicles[i]->pos_x == x && vehicles[i]->pos_y == y)
-                        {
-                            can_place = false;
-                        }
+                        can_place = false;
                     }
+                }
 
-                    if (can_place)
-                    {
-                        vehicles[v - 'A'] = new Vehicle(v, x, y, p);
+                if (can_place)
+                {
+                    vehicles[v - 'A'] = new Vehicle(v, x, y, p);
 
-                        // Send coordinates
-                        vehicles[v - 'A']->send("Start position: " + to_string(x) + ", " + to_string(y));
+                    // Send coordinates
+                    vehicles[v - 'A']->send("Start position: " + to_string(x) + ", " + to_string(y));
 
-                        return true;
-                    }
-                //}
+                    return true;
+                }
             }
         }
 
@@ -324,7 +322,12 @@ int main (int argc, char* argv[])
 
         // Message received!
         char snd = (char)msg.mType;
-        msgctl(msgid, IPC_STAT, buf);
+
+        if (msgctl(msgid, IPC_STAT, buf) != 0)
+        {
+            cout << "Error getting message stats" << endl;
+            return EXIT_FAILURE;
+        }
 
         cout << "Message received from " << snd << ": " << msg.mText << endl;
 
