@@ -147,6 +147,7 @@ public:
         }
 
         cout << "Field is full!" << endl;
+        return false;
     }
 
     void remove_vehicle (char v)
@@ -331,7 +332,10 @@ int main (int argc, char* argv[])
         {
             cout << "New vehicle" << endl;
 
-            gr.new_vehicle(snd, buf->msg_lspid);
+            if (!gr.new_vehicle(snd, buf->msg_lspid))
+            {
+                kill(buf->msg_lspid, SIGTERM);
+            }
         }
         else if (msg.mText[0] == 'T')
         {
