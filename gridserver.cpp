@@ -14,8 +14,14 @@ int fifo_mask = 0660;
 
 int msgid = -1;  /* Message Queue ID */
 
+void print_usage(char *programm_name)
+{
+    printf("Usage: %s -x grid_size_x > 0 -y grid_size_y > 0\n\n", programm_name);
+    return;
+}
 
-// Handles SIGTERM (Ctrl C)
+
+// Gracefully exit
 void my_handler(int s){
     printf("Caught signal %d\n", s);
 
@@ -221,9 +227,11 @@ public:
 
         board += "\0";
 
-        fp = fopen(fifo_name.c_str(), "w");
-        fprintf(fp, "%s", board.c_str());
-        fclose(fp);
+        if ((fp = fopen(fifo_name.c_str(), "w")) != NULL)
+        {
+            fprintf(fp, "%s", board.c_str());
+            fclose(fp);
+        }
     }
 };
 
@@ -238,10 +246,20 @@ int main (int argc, char* argv[])
     sigIntHandler.sa_flags = 0;
 
     sigaction(SIGINT, &sigIntHandler, NULL);
+    sigaction(SIGHUP, &sigIntHandler, NULL);
+    sigaction(SIGQUIT, &sigIntHandler, NULL);
 
     // Read size and create grid
     int c;
-    int x, y;
+    int x = 0, y = 0;
+
+    char* programm_name = argv[0];
+
+    if (argc < 5)
+    {
+        print_usage(programm_name);
+        exit(1);
+    }
 
     while ((c = getopt( argc, argv, "x:y:" )) != EOF ) {
         switch (c) {
@@ -252,13 +270,19 @@ int main (int argc, char* argv[])
                 y = atoi(optarg);
                 break;
             case '?':
-                fprintf( stderr, "Error: Unknown option.\n");
+                print_usage(programm_name);
                 exit(1);
                 break;
             // default:
                 /* assert() dient nur zu Debugzwecken und sollte nur dort eingesetzt sein,
                 wo etwas sicher niemals passieren darf. 0 ist in C immer gleich "logisch falsch". */
         }
+    }
+
+    if (x == 0 || y == 0)
+    {
+        print_usage(programm_name);
+        exit(1);
     }
 
     // TODO: Check if variables were entered and aren't just random stuff at address

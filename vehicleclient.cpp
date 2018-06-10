@@ -13,6 +13,12 @@ int msgid = -1;  /* Message Queue ID */
 message_t msg;  /* Buffer fuer Message */
 char vehicle_name;
 
+void print_usage(char *programm_name)
+{
+    printf("usage: %s vehicle_name (A-Z)\n\n", programm_name);
+    return;
+}
+
 
 // Handles SIGTERM (Ctrl C)
 void my_handler(int s){
@@ -57,8 +63,15 @@ int main (int argc, char* argv[])
 
     sigaction(SIGTERM, &sigTermHandler, NULL);
 
-
     char* programm_name = argv[0];
+
+    // Check if vehicle name was provided and corect
+    if (argc < 2 || !(argv[1][0] >= 'A' && argv[1][0] <= 'Z'))
+    {
+        print_usage(programm_name);
+        exit(1);
+    }
+
     vehicle_name = argv[1][0];
 
     cout << "Started client with vehicle " << vehicle_name << endl;
