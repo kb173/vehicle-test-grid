@@ -263,10 +263,10 @@ int main (int argc, char* argv[])
     while ((c = getopt( argc, argv, "x:y:" )) != EOF ) {
         switch (c) {
             case 'x':
-                x = atoi(optarg);
+                x = strtol(optarg, nullptr, 10);
                 break;
             case 'y':
-                y = atoi(optarg);
+                y = strtol(optarg, nullptr, 10);
                 break;
             case '?':
                 print_usage(programm_name);
